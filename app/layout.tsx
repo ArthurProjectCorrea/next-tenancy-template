@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ThemeProvider } from '@/components/theme-provider';
+import { TopLoader } from 'next-top-loader';
 import './globals.css';
 
 const geistSans = Geist({
@@ -36,6 +37,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <TopLoader color="#22c55e" height={3} zIndex={50} />
           <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
         <Toaster />
