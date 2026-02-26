@@ -22,6 +22,8 @@ export function OTPForm({
   onSubmit,
   email,
   onResend,
+  header,
+  description,
   ...props
 }: // inherit standard form props except onSubmit, which would conflict with our
 // custom handler that receives the OTP string instead of an event
@@ -30,6 +32,8 @@ Omit<React.ComponentProps<'form'>, 'onSubmit'> & {
   // returning `false` is respected by caller to prevent cooldown
   onResend?: () => void | boolean | Promise<void | boolean>;
   email?: string | null;
+  header?: string;
+  description?: string;
 }) {
   const [code, setCode] = React.useState('');
   const [resending, setResending] = useState(false);
@@ -37,8 +41,9 @@ Omit<React.ComponentProps<'form'>, 'onSubmit'> & {
   const [submitting, setSubmitting] = useState(false);
 
   const text = {
-    header: 'Verifique seu login',
-    description: 'Digite o código que enviamos para seu e‑mail: ',
+    header: header ?? 'Verifique seu login',
+    description:
+      (description ?? 'Digite o código que enviamos para seu e‑mail: ') + ' ',
     email: 'm@example.com',
     verificationCode: 'Código de verificação',
     resend: 'Reenviar código',

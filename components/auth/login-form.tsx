@@ -75,7 +75,7 @@ export function LoginForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: data.email, password: data.password }),
       });
-       
+
       const payload = await res.json();
       if (!res.ok) {
         const msg = String(payload?.error || '').toLowerCase();
@@ -179,12 +179,12 @@ export function LoginForm({
         <Field>
           <div className="flex items-center">
             <FieldLabel htmlFor="password">{text.passwordLabel}</FieldLabel>
-            <a
-              href="#"
+            <Link
+              href="/forgot-password"
               className="ml-auto text-sm underline-offset-4 hover:underline"
             >
               {text.forgotPassword}
-            </a>
+            </Link>
           </div>
           <Input
             id="password"

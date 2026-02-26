@@ -21,7 +21,7 @@ export default function VerifyOTPPage() {
     setEmail(params.get('email'));
   }, []);
 
-  // redirect back to signup if required params are missing
+  // redirect back if required params are missing
   useEffect(() => {
     if (typeParam === null || email === null) return; // wait until parsed
     if (!typeParam || !email) {
@@ -29,13 +29,13 @@ export default function VerifyOTPPage() {
     }
   }, [typeParam, email, router]);
 
-  type SupaFlowType = 'signup' | 'recovery' | 'magiclink' | 'invite' | string;
+  type SupaFlowType = 'email' | 'recovery' | 'magiclink' | 'invite' | string;
 
   const mapType = (param: string): SupaFlowType => {
     switch (param) {
-      case 'email':
-        return 'signup';
-      case 'reset':
+      case 'signup':
+        return 'email';
+      case 'recovery':
         return 'recovery';
       default:
         return param as SupaFlowType;
@@ -78,13 +78,22 @@ export default function VerifyOTPPage() {
         return;
       }
 
-      if (data?.session) {
-        // prevent automatic login
+      if (data?.session && typeParam === 'signup') {
+        // prevent automatic login after sign‑up confirmation
         await supabase.auth.signOut();
       }
 
-      toast.success('E-mail confirmado! Faça login.');
-      router.push('/login');
+      // route based on the flow type
+      if (typeParam === 'signup' || typeParam === 'email') {
+        toast.success('E-mail confirmado! Faça login.');
+        router.push('/login');
+      } else if (typeParam === 'recovery') {
+        toast.success('Código verificado. Defina uma nova senha.');
+        router.push(`/reset-password?email=${encodeURIComponent(email)}`);
+      } else {
+        // fallback
+        router.push('/login');
+      }
     } catch (err) {
       toast.error('Erro ao verificar código.');
       console.error('verifyOtp', err);
@@ -94,6 +103,30 @@ export default function VerifyOTPPage() {
   const handleResend = async () => {
     if (!email || !typeParam) return false;
 
+    if (typeParam === 'recovery') {
+      // simply trigger forgot-password endpoint again; this will send a
+      // fresh OTP (assuming the project template is configured for OTP).
+      try {
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        if (!res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          toast.error(payload?.error || 'Não foi possível reenviar o código.');
+          return false;
+        }
+        toast.success('Código reenviado para o e‑mail.');
+        return true;
+      } catch (err) {
+        toast.error('Erro ao reenviar o código.');
+        console.error('forgot-password resend', err);
+        return false;
+      }
+    }
+
+    // other flows (signup/email) still use Supabase resend helper
     const supaType = mapType(typeParam);
     const supabase = createBrowserSupabaseClient();
 
@@ -121,7 +154,23 @@ export default function VerifyOTPPage() {
     }
   };
 
+  let headerText = undefined;
+  let descriptionText = undefined;
+  if (typeParam === 'recovery') {
+    headerText = 'Recuperação de senha';
+    descriptionText = 'Digite o código de recuperação que enviamos para:';
+  } else if (typeParam === 'signup' || typeParam === 'email') {
+    headerText = 'Confirme seu e‑mail';
+    descriptionText = 'Digite o código de verificação que enviamos para:';
+  }
+
   return (
-    <OTPForm email={email} onSubmit={handleSubmit} onResend={handleResend} />
+    <OTPForm
+      email={email}
+      onSubmit={handleSubmit}
+      onResend={handleResend}
+      header={headerText}
+      description={descriptionText}
+    />
   );
 }

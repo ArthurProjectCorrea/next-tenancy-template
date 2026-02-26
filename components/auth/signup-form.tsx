@@ -157,7 +157,7 @@ export function SignupForm({
 
       toast.success(text.signupSuccess);
       router.push(
-        `/verify-otp?type=email&email=${encodeURIComponent(data.email)}`
+        `/verify-otp?type=signup&email=${encodeURIComponent(data.email)}`
       );
     } catch (err) {
       console.error('signup error', err);
