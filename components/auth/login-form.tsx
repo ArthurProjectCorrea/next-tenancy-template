@@ -1,10 +1,12 @@
 'use client';
 // encoding fix
 import React from 'react';
+import type { Provider } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { OAuthButton } from './oauth-button';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import {
   Field,
   FieldDescription,
@@ -17,14 +19,13 @@ import { useForm } from 'react-hook-form';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { LoginToastHandler } from './login-toast';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import Link from 'next/link';
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<'form'>) {
   const router = useRouter();
-  const supabase = createBrowserSupabaseClient();
   const {
     register,
     handleSubmit,
@@ -53,6 +54,7 @@ export function LoginForm({
   // include toast handler for both success and error
   // (error also covered by oauthError effect but duplicate is harmless)
   // we don't render it directly in markup; adding here ensures the useEffect runs
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _toastManager = <LoginToastHandler />;
 
   // if the callback route returned an error, show it
@@ -67,45 +69,79 @@ export function LoginForm({
   );
 
   const onSubmit = async (data: { email: string; password: string }) => {
-    const { error } = await supabase.auth.signInWithPassword(data);
-    if (error) {
-      // handle known cases
-      const msg = error.message.toLowerCase();
-      if (
-        msg.includes('not confirmed') ||
-        msg.includes('verify') ||
-        msg.includes('confirm')
-      ) {
-        toast.error('Por favor, verifique seu e-mail antes de fazer login.');
-      } else if (msg.includes('invalid') || msg.includes('credentials')) {
-        toast.error('Credenciais inválidas. Verifique e tente novamente.');
-      } else {
-        toast.error('Ocorreu um erro durante o login.');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email, password: data.password }),
+      });
+       
+      const payload = await res.json();
+      if (!res.ok) {
+        const msg = String(payload?.error || '').toLowerCase();
+        if (
+          msg.includes('not confirmed') ||
+          msg.includes('verify') ||
+          msg.includes('confirm')
+        ) {
+          toast.error('Por favor, verifique seu e-mail antes de fazer login.');
+        } else if (msg.includes('invalid') || msg.includes('credentials')) {
+          toast.error('Credenciais inválidas. Verifique e tente novamente.');
+        } else {
+          toast.error(payload?.error || 'Ocorreu um erro durante o login.');
+        }
+        console.error('Login error:', payload);
+        return;
       }
-      console.error('Login error:', error);
-    } else {
+      // propagate the session to the browser client in case
+      // future client-side calls need it (and to keep local storage
+      // in sync). the API route already set the cookie, but this
+      // ensures the in-memory client is up to date.
+      try {
+        const supabase = createBrowserSupabaseClient();
+        if (payload?.data?.session) {
+          await supabase.auth.setSession(payload.data.session);
+        }
+      } catch (e) {
+        console.warn('failed to set client session', e);
+      }
+
       toast.success('Login efetuado com sucesso!');
       router.push(redirectTo);
+    } catch (err) {
+      console.error('login request failed', err);
+      toast.error('Ocorreu um erro durante o login.');
     }
   };
 
   // helper to start an OAuth flow with a given provider
-  type OAuthProvider = Parameters<
-    typeof supabase.auth.signInWithOAuth
-  >[0]['provider'];
+  // it's easier to just allow the known list of providers; we only
+  // use "github" right now but the type can be widened later.
+  type OAuthProvider =
+    | 'github'
+    | 'google'
+    | 'azure'
+    | 'facebook'
+    | 'gitlab'
+    | 'bitbucket'
+    | 'discord'
+    | 'slack'
+    | 'twitch'
+    | string;
+
   const signInWithProvider = async (provider: OAuthProvider) => {
     setOauthLoading(provider);
-    // give the spinner a moment to render visibly before we start the network roundtrip
     await new Promise((r) => setTimeout(r, 150));
 
-    // build a callback URL that preserves the original redirect target
+    const supabase = createBrowserSupabaseClient();
+
     let callbackUrl = `${window.location.origin}/auth/callback`;
     if (redirectTo) {
       callbackUrl += `?redirectedFrom=${encodeURIComponent(redirectTo)}`;
     }
 
     const { error } = await supabase.auth.signInWithOAuth({
-      provider,
+      provider: provider as Provider,
       options: {
         redirectTo: callbackUrl,
       },
@@ -185,9 +221,9 @@ export function LoginForm({
           />
           <FieldDescription className="text-center">
             {text.noAccount}{' '}
-            <a href="#" className="underline underline-offset-4">
+            <Link href="/signup" className="underline underline-offset-4">
               {text.signUp}
-            </a>
+            </Link>
           </FieldDescription>
         </Field>
       </FieldGroup>

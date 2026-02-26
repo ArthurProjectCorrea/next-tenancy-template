@@ -1,8 +1,13 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies, headers } from 'next/headers';
+import type { NextResponse } from 'next/server';
 
-// Server-side client you can call inside server components or actions
-export const createServerSupabaseClient = () =>
+// Server-side client you can call inside server components or actions.
+// Accepts an optional `res` object so that API routes can write cookies back
+// to the response. When `res` is omitted the helper behaves like before
+// (setAll is a no‑op), which is fine for server components and middleware
+// where cookies are managed separately.
+export const createServerSupabaseClient = (res?: NextResponse) =>
   createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -46,8 +51,27 @@ export const createServerSupabaseClient = () =>
             return [];
           }
         },
-        setAll: (_cookies: unknown) => {
-          // no-op: server components rarely set cookies, middleware handles writes
+        setAll: (cookiesList: unknown) => {
+          if (!res) {
+            // no-op in server components
+            return;
+          }
+          // when invoked from an API route we received a NextResponse
+          // instance; write each cookie to the response object so the
+          // browser receives it.
+          (
+            cookiesList as Array<{
+              name: string;
+              value: string;
+              options?: Record<string, unknown>;
+            }>
+          ).forEach((c) => {
+            res.cookies.set(
+              c.name,
+              c.value,
+              c.options as Record<string, unknown>
+            );
+          });
         },
       },
     }

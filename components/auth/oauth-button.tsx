@@ -25,6 +25,7 @@ export function OAuthButton({
       type="button"
       onClick={onClick}
       disabled={loading}
+      data-provider={provider}
       className="flex items-center justify-center cursor-pointer"
     >
       {loading && <Spinner className="mr-2" />}
