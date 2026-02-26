@@ -1,3 +1,9 @@
+# [1.2.0](https://github.com/ArthurProjectCorrea/next-tenancy-template/compare/v1.1.0...v1.2.0) (2026-02-26)
+
+### Features
+
+- **auth:** add forgot and reset password flows ([4ec49b2](https://github.com/ArthurProjectCorrea/next-tenancy-template/commit/4ec49b2af7b83a366d659446a0213e09a5abb35d))
+
 # [1.1.0](https://github.com/ArthurProjectCorrea/next-tenancy-template/compare/v1.0.0...v1.1.0) (2026-02-26)
 
 ### Features
