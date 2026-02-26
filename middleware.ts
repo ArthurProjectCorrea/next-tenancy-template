@@ -38,6 +38,9 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
+  // optionally verify user authenticity; we only care if a session exists for now
+  // could call supabase.auth.getUser() here if you need the user object
+
   const isPrivatePath = req.nextUrl.pathname.startsWith('/private');
   const isAuthPath = req.nextUrl.pathname.startsWith('/login');
 
